@@ -1,6 +1,6 @@
 import numpy as np
 
-#stochastic gradietn descent
+#stochastic gradient descent
 class SGDOptimizer:
     def __init__(self,lr : float):
         self.lr = lr
@@ -98,3 +98,4 @@ class NeuralNetwork:
         for layer in self.layers:
             current_input = layer.forward(current_input)
         return current_input
+    
