@@ -18,8 +18,8 @@ ground_scroll = 0
 scroll_speed = 4
 
 #load images
-background = pygame.image.load('flappybg4.png')
-ground_img = pygame.image.load('ground.png')
+background = pygame.image.load('images/flappybg4.png')
+ground_img = pygame.image.load('images/ground.png')
 
 run = True
 while run:
