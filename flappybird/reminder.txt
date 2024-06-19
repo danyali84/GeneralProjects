@@ -1,0 +1,6 @@
+BACKGROUND VARIABLES:
+- screen width : 710 || screen height : 750
+- fps 30, scroll speed 4
+- sky width : 710 || sky height : 580
+- ground width : 770 || ground height : 170
+- ground restart trigger (slice size) : 60
