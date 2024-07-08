@@ -6,7 +6,7 @@ import os
 import pickle as pickle
 import random
 
-pygame.init()
+from pathlib import Path
 
 clock = pygame.time.Clock()
 fps = 60
@@ -40,6 +40,9 @@ pass_pipe = False
 background = pygame.image.load('images/flappybg4.png')
 ground_img = pygame.image.load('images/ground.png')
 
+GENERATION = 0
+MAX_FITNESS = float('-inf')
+BEST_GENOME = 0
 
 def draw_text(text, font, text_color, x, y):
     img = font.render(text, True, text_color)
@@ -90,79 +93,121 @@ class Pipe(pygame.sprite.Sprite):
         if self.rect.right < 0:
             self.kill() #deletes the pipe to save storage
 
+def game(genome, config):
+    net = neat.nn.FeedForwardNetwork.create(genome, config)
 
-bird_group = pygame.sprite.Group()
-pipe_group = pygame.sprite.Group()
+    pygame.init()
 
-flappy = Bird(100, int(screen_height / 2))
-bird_group.add(flappy)
+    global score
+
+    bird_group = pygame.sprite.Group()
+    pipe_group = pygame.sprite.Group()
+
+    flappy = Bird(100, int(screen_height / 2))
+    bird_group.add(flappy)
 
 
-run = True
-while run:
+    run = True
+    while run:
 
-    clock.tick(fps)
+        clock.tick(fps)
 
-    #puts the image as the background
-    screen.blit(background, (0,0))
+        #puts the image as the background
+        screen.blit(background, (0,0))
 
-    #inserts bird using built in function "draw"
-    bird_group.draw(screen)
-    bird_group.update()
-    pipe_group.draw(screen)
+        #inserts bird using built in function "draw"
+        bird_group.draw(screen)
+        bird_group.update()
+        pipe_group.draw(screen)
 
-    #draw ground
-    screen.blit(ground_img, (ground_scroll, 580))
+        #draw ground
+        screen.blit(ground_img, (ground_scroll, 580))
 
-    #check the score
-    if len(pipe_group) > 0:
-        if bird_group.sprites()[0].rect.left > pipe_group.sprites()[0].rect.left\
-            and bird_group.sprites()[0].rect.right < pipe_group.sprites()[0].rect.right\
-            and pass_pipe == False:
-            pass_pipe = True
-        if pass_pipe == True:
-            if bird_group.sprites()[0].rect.left > pipe_group.sprites()[0].rect.right:
-                score += 1
-                pass_pipe = False
+        #check the score
+        if len(pipe_group) > 0:
+            if bird_group.sprites()[0].rect.left > pipe_group.sprites()[0].rect.left\
+                and bird_group.sprites()[0].rect.right < pipe_group.sprites()[0].rect.right\
+                and pass_pipe == False:
+                pass_pipe = True
+            if pass_pipe == True:
+                if bird_group.sprites()[0].rect.left > pipe_group.sprites()[0].rect.right:
+                    score += 1
+                    pass_pipe = False
 
-    draw_text(str(score), font, white, int(screen_width/2), 20)
+        draw_text(str(score), font, white, int(screen_width/2), 20)
 
-    #look for collision
-    if pygame.sprite.groupcollide(bird_group, pipe_group, False, False) or flappy.rect.top < 0:
-        #2 falses are just additional parameters we dont need, and also checks if it hit the top
-        game_over = True
+        #look for collision
+        if pygame.sprite.groupcollide(bird_group, pipe_group, False, False) or flappy.rect.top < 0:
+            #2 falses are just additional parameters we dont need, and also checks if it hit the top
+            game_over = True
 
-    #check if bird has hit ground
-    if flappy.rect.bottom >= 580:
-        game_over = True
-        flying = False
+        #check if bird has hit ground
+        if flappy.rect.bottom >= 580:
+            game_over = True
+            flying = False
 
-    if game_over == False and flying == True:
+        if game_over == False and flying == True:
 
-        #generate new pipes
-        time_now = pygame.time.get_ticks()
-        if time_now - last_pipe > pipe_frequency:
-            pipe_height = random.randint(-100, 100)
-            btm_pipe = Pipe(screen_width, int(screen_height / 2) + pipe_height, -1)
-            top_pipe = Pipe(screen_width, int(screen_height / 2) + pipe_height, 1)
-            pipe_group.add(btm_pipe)
-            pipe_group.add(top_pipe)
-            last_pipe = time_now
+            #generate new pipes
+            time_now = pygame.time.get_ticks()
+            if time_now - last_pipe > pipe_frequency:
+                pipe_height = random.randint(-100, 100)
+                btm_pipe = Pipe(screen_width, int(screen_height / 2) + pipe_height, -1)
+                top_pipe = Pipe(screen_width, int(screen_height / 2) + pipe_height, 1)
+                pipe_group.add(btm_pipe)
+                pipe_group.add(top_pipe)
+                last_pipe = time_now
 
-        ground_scroll -= scroll_speed #moves ground
-        #restart image (puts it back in start pos) so it looks like it continuously scrolls
-        if abs(ground_scroll) > 59:
-            ground_scroll = 0
+            ground_scroll -= scroll_speed #moves ground
+            #restart image (puts it back in start pos) so it looks like it continuously scrolls
+            if abs(ground_scroll) > 59:
+                ground_scroll = 0
 
-        pipe_group.update()
-    
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            run = False #will stop running the program
-        if event.type == pygame.MOUSEBUTTONDOWN and flying == False and game_over == False:
-            flying = True
+            pipe_group.update()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False #will stop running the program
+            if event.type == pygame.MOUSEBUTTONDOWN and flying == False and game_over == False:
+                flying = True
 
-    #update() ensures that the game actually updates itself after each iteration
-    pygame.display.update()
+        #update() ensures that the game actually updates itself after each iteration
+        
+        pygame.display.update()
+        clock.tick(fps)
 
-pygame.quit()
+def eval_genomes(genomes, config):
+    global score
+    global GENERATION, MAX_FITNESS, BEST_GENOME
+
+    GENERATION += 1
+    i = 0
+    for genome_id, genome in genomes:
+        i += 1
+        genome.fitness = game(genome, config)
+        if genome.fitness is None:
+            genome.fitness = float('-inf') #fixes errors on early termination
+        print("Gen : {} Genome # : {} Fitness : {} Max FItness : {}".format(GENERATION, i, genome.fitness, MAX_FITNESS))
+        if (genome.fitness):
+            if genome.fitness >= MAX_FITNESS:
+                MAX_FITNESS = genome.fitness
+                BEST_GENOME = genome
+        SCORE = 0
+
+config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, 'config')
+
+pop = neat.Population(config)
+stats = neat.StatisticsReporter()
+pop.add_reporter(stats)
+
+winner = pop.run(eval_genomes, 30)
+
+print(winner)
+
+outputDir = os.getcwd() + '/bestGenomes'
+Path(outputDir).mkdir(parents =True, exist_ok=True)
+os.chdir(outputDir)
+serialNo = len(os.listdir(outputDir))+1
+outputFile = open(str(serialNo)+'_'+str(int(MAX_FITNESS))+'.p','wb')
+
+pickle.dump(winner, outputFile)
