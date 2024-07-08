@@ -164,23 +164,3 @@ while run:
 
 pygame.quit()
 
-def eval_genomes(genomes, config):
-    global score
-    global GENERATION, MAX_FITNESS, BEST_GENOME
-
-    GENERATION += 1
-
-    i = 0
-
-    for genome_id, genome in genomes:
-        i += 1
-        genome.fitness = main(genome, config)
-        if genome.fitness is None:
-            genome.fitness = float('-inf')
-        print("Gen : {} Genome # : {} Fitness : {} Max Fitness : {}".format(GENERATION, i, genome.fitness, MAX_FITNESS))
-        if (genome.fitness):
-            if genome.fitness >= MAX_FITNESS:
-                MAX_FITNESS = genome.fitness
-                BEST_GENOME = genome
-        
-        score = 0
